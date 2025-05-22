@@ -1,0 +1,20 @@
+Idea: Minimize your hand's score, maximize your opponents score
+
+Play large cards (non-special), play cards that your opponent cant play
+
+DEALS w/ HERO AND OPP CARD POINTS
+	r(large_card) = +1 * p(large_card)
+	r(card) = -1 * valid(card, card_i) * %(card_i) * p(card_i)
+	opp_r(card) is the points lost when an opp plays a card
+
+DEALS w/ BEING ABLE TO PLAY CARD
+	r(hand) = -1 * p(change_color) * hand(#colors)
+	r(hand) = -1 * hand(#colors) * ave( draws required to find ( card(color switcher card) - card(+4) ) * ave( p(deck) )
+	// p(change_color) = ave( draws required to find (color switcher card - card(+4)) ) * ave( deck card points )
+
+required functions:
+	ave( draws required to find (card(color_switcher) - card(+4) )
+	ave( deck card points )
+
+	r(card) = -1 * valid(card, card_i) * %(card_i) * p(card_i)
+	valid(card, card_i) = 0: if non-valid card, 1: if valid card
