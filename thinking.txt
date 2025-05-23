@@ -19,33 +19,24 @@ Play large cards (non-special), play cards that your opponent cant play
 DEALS w/ HERO AND OPP CARD POINTS
 	1. r[card] += p(card) 												// (+) Reward of removing scoring points from hero hand
 
-	1. r_V1(x) = valid(card, card_i) * %(card_i) * opp_p(card_i) for all card_i in possible cards			// (/) Reward of removing points from V1 hand from V1 perspective (average of remaining cards bc imperfect info)
-		a. Equation Breakdown: Is it valid to play card_i on card? * How many card_i are there? * How many points is card_i?
-		b. valid(card, card_i) = (0: if non-valid card, 1: if valid card)
-		c. How do we feel about how the V will act on our card? we want them to gain hand points. How much (what units)? V_1 gaining hand points rewards V_2, V_3, and H and costs V_1
-		c2. r_V1(x) * (+ win%(V_1) - win%(V_2) - win%(V_3) + win%(H)) // rly weird thinking idk what this is
-		c3. r(V_1) += r_V1(x) * win%(V_1)
-		c4. r(V_i, i > 1) += -r_V1(x) * win%(V_i) // Win points gained by V_i through V_1 action -> Reduce this
-	2. Completing function
-		a. r[card] -= r_V1(card) * sum(players win%)
-		b. r[card] -= r_V1(card) * 1 // fudgegegegegegegeg bro.
-	3. Incomplete function
-		for card in hand:
-			r[card] -= r_V1(card)
-	3. Test Case Matching (a)
-		idk? like if we play a card that V1 can lose 10 points off of, there is a cost to that, versus playing a card that V1 can lost 5 points off
-		How does V1 losing points affect V_i losing points? -> They dont like it, the reward of V_1 losing points from V_i perspective is -r_V1(card) * win%(V_i)
-		We dont like V_i to gain, so r[card] -= -r_V1(card) * win%(V_i)
-			r[card] -= r_V1(card) * win%(V_1)
-			r[card] -= -r_V1(card) * win%(V_i)
+	1. Mimimizing V gain based on thier play off our play
+		How does V1 losing points affect V_i?
+		a. V_i doesn't V1 losing points when they are going to win, the reward of V1 losing points V_i perspective is -r_V1(card) * win%(V_i)
+		b. We dont like V_i to gain, so r[card] -= -r_V1(card) * win%(V_i)
+		c. We dont like V1 to lost points when we are going to win
+			r[card] -= r_V1(card) 			// Minimize win points H loses
+			r[card] -= r_V1(card) * win%(V_1) 	// Minimize win points V1 gains scaled by V1 win%
+			r[card] += r_V1(card) * win%(V_i) 	// Maximize win points V_i loses scaled by V_i win%
 	4. Full function
 		for card in hand:
 			double r_card = -1 * r_V1(card) * win%(V_1)
 			for V_i in villans:
-				r_card -= -1 * r_V1(card) * win%(V_i)
+				r_card -= -r_V1(card) * win%(V_i)
 			r[card] += r_card
 	5. Test Case Matching (b)
-		TODOOD
+		If V2 is close to winning, we actually want to reduce V1 hand points in order to reduce V2 win points
+
+		If all win% are matching, what then? 
 
 
 DEALS w/ BEING ABLE TO PLAY CARD
