@@ -1,16 +1,70 @@
-Idea: Minimize your hand's score, maximize your opponents score
+Convention: 
+1. Caps titles describe reward functions being described
+2. Numbers show thinking process, largest numbers are most complete thought
+3. alphas show sub thinking, notes
+
+Notation:
+1. r[x] is the reward for playing card x
+2. p(x) is the points required to fulfill condition x
+3. V_i is based on next to act. V_1 is next to act after hero. V_2 is next next to act after nero
+3. (+) means reward benefits hero, (-) means reward costs hero, (/) means neutral
+
+1. Villian win points is -1 * hero reward
+
+Idea: Minimize your hand's score, maximize your opponents hands score
+Idea: Maximize your potential win score, minimize your opponents potential win score
 
 Play large cards (non-special), play cards that your opponent cant play
 
 DEALS w/ HERO AND OPP CARD POINTS
-	r(large_card) = +1 * p(large_card)
-	r(card) = -1 * valid(card, card_i) * %(card_i) * p(card_i)
-	opp_r(card) is the points lost when an opp plays a card
+	1. r[card] += p(card) 												// (+) Reward of removing scoring points from hero hand
+
+	1. r_V1(x) = valid(card, card_i) * %(card_i) * opp_p(card_i) for all card_i in possible cards			// (/) Reward of removing points from V1 hand from V1 perspective (average of remaining cards bc imperfect info)
+		a. Equation Breakdown: Is it valid to play card_i on card? * How many card_i are there? * How many points is card_i?
+		b. valid(card, card_i) = (0: if non-valid card, 1: if valid card)
+		c. How do we feel about how the V will act on our card? we want them to gain hand points. How much (what units)? V_1 gaining hand points rewards V_2, V_3, and H and costs V_1
+		c2. r_V1(x) * (+ win%(V_1) - win%(V_2) - win%(V_3) + win%(H)) // rly weird thinking idk what this is
+		c3. r(V_1) += r_V1(x) * win%(V_1)
+		c4. r(V_i, i > 1) += -r_V1(x) * win%(V_i) // Win points gained by V_i through V_1 action -> Reduce this
+	2. Completing function
+		a. r[card] -= r_V1(card) * sum(players win%)
+		b. r[card] -= r_V1(card) * 1 // fudgegegegegegegeg bro.
+	3. Incomplete function
+		for card in hand:
+			r[card] -= r_V1(card)
+	3. Test Case Matching (a)
+		idk? like if we play a card that V1 can lose 10 points off of, there is a cost to that, versus playing a card that V1 can lost 5 points off
+		How does V1 losing points affect V_i losing points? -> They dont like it, the reward of V_1 losing points from V_i perspective is -r_V1(card) * win%(V_i)
+		We dont like V_i to gain, so r[card] -= -r_V1(card) * win%(V_i)
+			r[card] -= r_V1(card) * win%(V_1)
+			r[card] -= -r_V1(card) * win%(V_i)
+	4. Full function
+		for card in hand:
+			double r_card = -1 * r_V1(card) * win%(V_1)
+			for V_i in villans:
+				r_card -= -1 * r_V1(card) * win%(V_i)
+			r[card] += r_card
+	5. Test Case Matching (b)
+		TODOOD
+
 
 DEALS w/ BEING ABLE TO PLAY CARD
-	r(hand) = -1 * p(change_color) * hand(#colors)
-	r(hand) = -1 * hand(#colors) * ave( draws required to find ( card(color switcher card) - card(+4) ) * ave( p(deck) )
-	// p(change_color) = ave( draws required to find (color switcher card - card(+4)) ) * ave( deck card points )
+	1. r(hand) -= p(change_color) * hand(#colors)								
+	2. r(hand) -= #colors(hand) * ave( draws to find ( card(color switcher card) - card(+4) ) * ave( p(deck) )
+	3. Turning r(hand) into r[card]
+		r[card] -= #colors(hand - card) * ave( draws to find( card(col_switcher) - card(+4) ) * ave( p(deck) )
+	4. Full function: Accounting for cost of changing color
+		double C = ave( draws to find( card(col_switcher) - card(+4) ) * ave( p(deck) )
+		for card in hand:
+			r[card] -= #colors(hand - card) * C
+	5. Test Case Matching
+		community = Y3, hand = [Y1, B2, B8, B9]
+		r[hand] = [-(1 * C), -(2 * C), -(2 * C), -(2 * C)] -> play Y1
+
+		Or is it better to play off large groups of colors and then switch to smaller ones?
+		a. Play off large groups -> Many small groups -> Many color switcher cards required
+		b. Play off small groups -> Many large groups -> Requires unbroken chain of color, col_switchers help with this
+		Concl: option b is more optimal and full function matches that
 
 required functions:
 	ave( draws required to find (card(color_switcher) - card(+4) )
@@ -18,3 +72,6 @@ required functions:
 
 	r(card) = -1 * valid(card, card_i) * %(card_i) * p(card_i)
 	valid(card, card_i) = 0: if non-valid card, 1: if valid card
+
+CASES:
+	pos(i+1) has uno -> +2, +4, 
