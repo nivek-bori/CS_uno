@@ -7,18 +7,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TeamKevinHenry {
-    public TeamKevinHenry() {
-        // Calculating deck total
-        deckCnt = Deck.NUMBER_OF_DUP_REGULAR_CARDS + Deck.NUMBER_OF_DUP_SPECIAL_CARDS + Deck.NUMBER_OF_DUP_ZERO_CARDS + Deck.NUMBER_OF_WILD_CARDS + Deck.NUMBER_OF_WILD_D4_CARDS;
-
-        deckP += 45 * Deck.NUMBER_OF_DUP_REGULAR_CARDS;
-        deckP += 4 * skipVal * Deck.NUMBER_OF_DUP_SPECIAL_CARDS;
-        deckP += 4 * reverseVal * Deck.NUMBER_OF_DUP_SPECIAL_CARDS;
-        deckP += 4 * plusTwoVal * Deck.NUMBER_OF_DUP_SPECIAL_CARDS;
-        deckP += wildVal * Deck.NUMBER_OF_WILD_CARDS;
-        deckP += plusFourVal * Deck.NUMBER_OF_WILD_D4_CARDS;
-    }
-
     // API Endpoints
     private Color colorToCall = Color.RED;
 
@@ -26,7 +14,7 @@ public class TeamKevinHenry {
         this.state = state;
         calc_win_frac();
         calc_handP(hand);
-        handCnt = hand.size();
+        handSizes = state.getNumCardsInHandsOfUpcomingPlayers();
 
         ArrayList<LCard> cards = new ArrayList<>();
         for (int i = 0; i < hand.size(); i++) {
@@ -72,6 +60,7 @@ public class TeamKevinHenry {
     private int deckCnt = 0;
     
     private ModelDeck deck;
+    private int[] handSizes;
 
     private double[] win_frac = new double[4];
     private int handP = 0;
@@ -127,13 +116,11 @@ public class TeamKevinHenry {
     }
 
     private double r_V1(Card c) {
-        
-        
-        // win points that V1 would get
+        double x = cardsThatCanPlay(); // frac of drawCards that play on c
 
-        double winP = handP;
-        double aveDrawP = calc_aveDrawP();
-
+        double r_V1 = 0.0;
+        r_V1 -= pow(x, handSizes[1]) * deck.aveDrawPoints();
+        r_V1 += (1 - pow(x, handSizes[1])) * deck.aveDrawPoints();
 
     }
 
@@ -167,9 +154,21 @@ public class TeamKevinHenry {
         public static final int NUMBER_OF_WILD_D4_CARDS = 4;
 
         public ArrayList<Card> draws = new ArrayList<>();
+        public int drawP = 0;
+        public int cardRemaining = 0;
+        public int colorChngRemaining = 0;
 
         public ModelDeck() {
             fillDeck();
+
+            cardRemaining += NUMBER_OF_DUP_REGULAR_CARDS + NUMBER_OF_DUP_SPECIAL_CARDS + NUMBER_OF_DUP_ZERO_CARDS + NUMBER_OF_WILD_CARDS + NUMBER_OF_WILD_D4_CARDS;
+            colorChngRemaining += NUMBER_OF_WILD_CARDS + NUMBER_OF_WILD_D4_CARDS;
+            drawP += 45 * NUMBER_OF_DUP_REGULAR_CARDS;
+            drawP += 4 * skipVal * NUMBER_OF_DUP_SPECIAL_CARDS;
+            drawP += 4 * reverseVal * NUMBER_OF_DUP_SPECIAL_CARDS;
+            drawP += 4 * plusTwoVal * NUMBER_OF_DUP_SPECIAL_CARDS;
+            drawP += wildVal * NUMBER_OF_WILD_CARDS;
+            drawP += plusFourVal * NUMBER_OF_WILD_D4_CARDS;
         }
 
         private void fillDeck() {
@@ -211,7 +210,14 @@ public class TeamKevinHenry {
         
         public void removeCards(List<Card> cards) {
             for (Card c : cards) {
-                // Search for the requested card in deck and remove it
+                // Keeping track of draw stats
+                drawP -= p(c);
+                cardsRemaining--;
+                if (c.getColor().equals(UnoPlayer.Color.NONE)) {
+                    colorChngRemaining--;
+                }
+                
+                // Updaing actual draws
                 for (int i = 0; i < draws.size(); i++) {
                     Card deckC = draws.get(i);
                     
