@@ -6,47 +6,43 @@ import uno.UnoPlayer.Rank;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.smartcardio.Card;
+
 public class TeamKevinHenry {
     // API Endpoints
     private Color colorToCall = Color.RED;
 
     public int play(List<Card> hand, Card xC, Color xCol, GameState state) {
         this.state = state;
-        calc_win_frac();
-        calc_handP(hand);
-        handSizes = state.getNumCardsInHandsOfUpcomingPlayers();
 
-        ArrayList<LCard> cards = new ArrayList<>();
-        for (int i = 0; i < hand.size(); i++) {
-            Card c = hand.get(i);
-            if (c.canPlayOn(xC, xCol)) {
-                cards.add(new LCard(c, 0.0, i));
-            }
-        }
+        // Stat Models
+        deck = new ModelDeck();
+        deck.removeCards(hand);
+        deck.removeCards(discarded);
 
-        // Work in progress
+        hand = new Hands(hand, state);
+        
+        double[] R = new double[cards.size()];
+
+        // Constants
+        double aveDraws = aveDrawsTillColorChange();
+
         for (LCard lc : cards) {
-            double r_card = -1 * r_V1(c) * win_frac[1];
-
-        }
-
-        for card in hand:
-        double r_card = -1 * r_V1(card) * win%(V_1)
-        for V_i in villans:
-        r_card -= -r_V1(card) * win%(V_i)
-                r[card] += r_card
-        // Work in progress
-
-        int maxI = -1;
-        double maxR = Double.MIN_VALUE;
-        for (int i = 0; i < r.size(); i++) {
-            if (r.get(i) > maxR) {
-                maxR = r.get(i);
-                maxI = indexes.get(i);
+            // Consideration 1
+            double oppRVal = oppR(lc, lc.c.color);
+            double r = -1 * oppR(xC, xCol) * win_frac[1];
+            for (int i = 2; i < 4; i++) {
+                r -= -1 * oppRVal * win_frac[i];
             }
+            R[lc.j] += r;
+
+            // Consideration 2
+            R[lc.j]
         }
 
-        return maxI;
+        
+
+        
     }
 
     public Color callColor(List<Card> hand) {
@@ -56,93 +52,92 @@ public class TeamKevinHenry {
     // Internal Code
     private GameState state;
     private int plusTwoVal = 20,  plusFourVal = 25, wildVal = 16, skipVal = 14, reverseVal = 12;
-    private int deckP = 0;
-    private int deckCnt = 0;
+    private int deckP = 0; private int deckCnt = 0;
     
     private ModelDeck deck;
-    private int[] handSizes;
+    private Hand hand;
 
     private double[] win_frac = new double[4];
-    private int handP = 0;
-    private int handCnt = 0;
-    
-    private void calcDeck(List<Card> hand, List<Card> discarded) {
-        deck = new ModelDeck();
-        deck.removeCards(hand);
-        deck.removeCards(discarded);
-    }
+    private int handP = 0; private int handCnt = 0;
 
     private double p(Card c) {
         double score = 0.0;
 
-        if (c.getRank().equals(Rank.DRAW_TWO)) {
-            score += plusTwoVal;
-        } else if(c.getRank().equals(Rank.SKIP)){
-            score += skipVal;
-        } else if (c.getRank().equals(Rank.REVERSE)) {
-            score += reverseVal;
-        } else if (c.getRank().equals(Rank.WILD_D4)) {
-            score += plusFourVal;
-        } else if (c.getRank().equals(Rank.WILD)) {
-            score += wildVal;
-        } else {
-            score += c.getNumber();
-        }
+        if (c.getRank().equals(Rank.DRAW_TWO)) {score += plusTwoVal;}
+        else if(c.getRank().equals(Rank.SKIP)) {score += skipVal;} 
+        else if (c.getRank().equals(Rank.REVERSE)) {score += reverseVal;}
+        else if (c.getRank().equals(Rank.WILD_D4)) {score += plusFourVal;}
+        else if (c.getRank().equals(Rank.WILD)) {score += wildVal;}
+        else {score += c.getNumber();}
 
         return score;
     }
 
-    private double[] calc_win_frac() {
-        int[] player_cards = state.getNumCardsInHandsOfUpcomingPlayers(); // [0] is next or (hero + 1) index
-        double total = 0;
+    private double oppR(Card c, Color col) {
+        double r = 0.0;
 
-        for (int hand : player_cards) {
-            total += hand;
+        // Fraction of cards that can be played
+        double canPlayCnt = 0.0; double canPlayP = 0.0;
+        for (Card nextC : deck.remainingCards()) {
+            if (nextC.canPlayOn(c, col)) {
+                canPlayCnt++;
+                canPlayP += p(nextC);
+            }
         }
+        canPlayP /= canPlayCnt;
 
-        for (int i = 0; i < 4; i++) {
-            int I = (i + 1) % 4;
+        // Percentage of hands that can play
+        double canPlayFrac = canPlayCnt / deck.drawsRemaining;
+        double handCanPlay = pow(canPlayFrac, handSize[1]);
 
-            win_frac[I] = player_cards[i] / total;
-        }
-    }
+        // Weighted reward of hands that play
+        r += canPlayP * handCanPlay; // If hand can play, how many win points for opp lose
+        r -= deck.aveDrawPoints() * (1 - handCanPlay); // If hand can't play, how many win points opp gain
 
-    private double calc_handP(List<Card> cards) {
-        for (Card c : cards) {
-            handP += p(c);
-        }
-
-        return handP;
-    }
-
-    private double r_V1(Card c) {
-        double x = cardsThatCanPlay(); // frac of drawCards that play on c
-
-        double r_V1 = 0.0;
-        r_V1 -= pow(x, handSizes[1]) * deck.aveDrawPoints();
-        r_V1 += (1 - pow(x, handSizes[1])) * deck.aveDrawPoints();
-
-    }
-
-    private double calc_aveDrawP() {
-        double drawP = deckP - handP;
-
-        for (Card c : state.getPlayedCards()) {
-            drawP -= p(c);
-        }
-
-        return drawP / (deckCnt - state.getPlayedCards().size() - handCnt);
+        return r;
     }
 
     private static class LCard {
         public Card c;
-        public double r;
         public int i;
+        public int j;
 
-        public LCard(Card c, double r, int i) {
+        public LCard(Card c, int i, int j) {
             this.c = c;
-            this.r = r;
             this.i = i;
+            this.j = j;
+        }
+    }
+
+    private static class Hands {
+        public GameState state;
+
+        public List<Card> hand;
+        public ArrayList<LCard> lhand;
+
+        public double[] winFrac = new double[4];
+
+        public Hands(List<Card> hand, GameState state) {
+            this.state = state;
+            this.hand = hand;
+
+            // Legal hand
+            for (int i = 0; i < hand.size(); i++) {
+                Card c = hand.get(i);
+                if (c.canPlayOn(xC, xCol)) {
+                    lhand.add(new LCard(c, i, lhand.size()));
+                }
+            }
+
+            // Win fraction
+            int[] handSizes = state.getNumCardsInHandsOfUpcomingPlayers();
+            double total = 0;
+            for (int handSize : handSize) { total += handSize; }
+
+            for (int i = 0; i < 4; i++) {
+                int I = (i + 1) % 4;
+                winFrac[I] = handSizes[i] / total;
+            }
         }
     }
     
@@ -153,15 +148,17 @@ public class TeamKevinHenry {
         public static final int NUMBER_OF_WILD_CARDS = 4;
         public static final int NUMBER_OF_WILD_D4_CARDS = 4;
 
+        private int plusTwoVal = 20, plusFourVal = 25, wildVal = 16, skipVal = 14, reverseVal = 12;
+
         public ArrayList<Card> draws = new ArrayList<>();
         public int drawP = 0;
-        public int cardRemaining = 0;
+        public int drawsRemaining = 0;
         public int colorChngRemaining = 0;
 
         public ModelDeck() {
             fillDeck();
 
-            cardRemaining += NUMBER_OF_DUP_REGULAR_CARDS + NUMBER_OF_DUP_SPECIAL_CARDS + NUMBER_OF_DUP_ZERO_CARDS + NUMBER_OF_WILD_CARDS + NUMBER_OF_WILD_D4_CARDS;
+            drawsRemaining += NUMBER_OF_DUP_REGULAR_CARDS + NUMBER_OF_DUP_SPECIAL_CARDS + NUMBER_OF_DUP_ZERO_CARDS + NUMBER_OF_WILD_CARDS + NUMBER_OF_WILD_D4_CARDS;
             colorChngRemaining += NUMBER_OF_WILD_CARDS + NUMBER_OF_WILD_D4_CARDS;
             drawP += 45 * NUMBER_OF_DUP_REGULAR_CARDS;
             drawP += 4 * skipVal * NUMBER_OF_DUP_SPECIAL_CARDS;
@@ -210,23 +207,32 @@ public class TeamKevinHenry {
         
         public void removeCards(List<Card> cards) {
             for (Card c : cards) {
-                // Keeping track of draw stats
-                drawP -= p(c);
-                cardsRemaining--;
-                if (c.getColor().equals(UnoPlayer.Color.NONE)) {
-                    colorChngRemaining--;
-                }
-                
                 // Updaing actual draws
                 for (int i = 0; i < draws.size(); i++) {
                     Card deckC = draws.get(i);
                     
                     if (deckC.equals(c)) {
+                        // Keeping track of cards
                         draws.remove(i);
+
+                        // Keeping track of draw stats
+                        drawP -= p(c);
+                        drawsRemaining--;
+                        if (c.getColor().equals(UnoPlayer.Color.NONE)) {
+                            colorChngRemaining--;
+                        }
                         break;
                     }
                 }
             }
+        }
+
+        public double aveDrawPoints() {
+            return drawP / drawsRemaining;
+        }
+
+        public aveDrawsTillColorChange() {
+            return 1 / (colorChngRemaining / drawsRemaining);
         }
     }
 }
